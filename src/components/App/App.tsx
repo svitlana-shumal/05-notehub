@@ -1,9 +1,19 @@
-import css from "./App.module.css";
+import css from "../App/App.module.css";
+import { Note } from "../../types/note";
+import { fetchNotes } from "../../services/noteService";
+import { useState } from "react";
+import SearchBar from "../SearchBar/SearchBar";
 
-<div className={css.app}>
-  <header className={css.toolbar}>
-    {/* Компонент SearchBox */}
-    {/* Пагінація */}
-    {/* Кнопка створення нотатки */}
-  </header>
-</div>;
+export default function App() {
+  const [query, setQuery] = useState("");
+
+  return (
+    <div className={css.app}>
+      <header className={css.toolbar}>
+        <SearchBar />
+        {/* Пагінація */}
+        {/* Кнопка створення нотатки */}
+      </header>
+    </div>
+  );
+}
