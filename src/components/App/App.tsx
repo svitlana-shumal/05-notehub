@@ -1,58 +1,50 @@
 import css from "../App/App.module.css";
 import Loader from "../Loader/Loader";
-import { useState } from "react";
 import SearchBox from "../SearchBox/SearchBox";
 import { useDebounce } from "use-debounce";
 import NoteList from "../NoteList/NoteList";
 import Pagination from "../Pagination/Pagination";
 import Modal from "../Modal/Modal";
 import NoteForm from "../NoteForm/NoteForm";
-import { Note } from "../../types/note";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { deleteNote, fetchNotes } from "../../services/noteService";
-import axios from "axios";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  deleteNote,
+  fetchNotes,
+  FetchNotesResponse,
+} from "../../services/noteService";
+import ErrorMessage from "../ErrorMessage/ErrorMessage";
+import { useState } from "react";
+import EmptyState from "../EmptyState/EmptyState";
 
 export default function App() {
   const [search, setSearch] = useState("");
-  const [debouncedSearch] = useDebounce(search, 500);
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [debouncedSearch] = useDebounce(search, 1000);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["notes", page, debouncedSearch],
-    queryFn: async () => {
-      const response = await axios.get(
-        "https:notehub-public.goit.study/api/notes",
-        {
-          params: debouncedSearch ? { search: debouncedSearch } : {},
-        }
-      );
-      return response.data;
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, isFetching, isError, error } =
+    useQuery<FetchNotesResponse>({
+      queryKey: ["notes", page, debouncedSearch],
+      queryFn: () => fetchNotes(debouncedSearch, page),
+      placeholderData: (prev) => prev,
+    });
+
+  const mutation = useMutation({
+    mutationFn: deleteNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
     },
-    enabled: true,
   });
-
-  // const mutation = useMutation({
-  //   mutationFn: deleteNote,
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ["notes"] });
-  //   },
-  //   onError: (error) => {
-  //     console.error("Delete failed", error);
-  //   },
-  // });
-  // const handleDelete = (id: string) => {
-  //   mutation.mutate(id);
-  // };
-
+  const handleDelete = (id: string) => {
+    mutation.mutate(id);
+  };
   const openModal = () => {
     setIsModalOpen(true);
-    setSelectedNote(null);
   };
   const closeModal = () => {
     setIsModalOpen(false);
-    setSelectedNote(null);
   };
 
   return (
@@ -62,8 +54,8 @@ export default function App() {
         {data?.totalPages && data.totalPages > 1 && (
           <Pagination
             currentPage={page}
-            totalPages={data?.totalPages}
-            onPageChange={(selectedPage) => setPage(selectedPage)}
+            totalPages={data.totalPages}
+            onPageChange={setPage}
           />
         )}
 
@@ -72,8 +64,12 @@ export default function App() {
         </button>
       </header>
 
-      {isLoading && <Loader />}
-      {isError && <p>Error loading notes</p>}
+      {(isLoading || isFetching) && <Loader />}
+
+      {isError && <ErrorMessage message={(error as Error).message} />}
+      {!data?.notes?.length && !isLoading && !isError && (
+        <EmptyState message="No results found." />
+      )}
       {data && data.notes.length > 0 && (
         <NoteList notes={data.notes} onDelete={handleDelete} />
       )}
