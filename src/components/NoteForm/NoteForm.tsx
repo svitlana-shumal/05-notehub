@@ -51,6 +51,7 @@ export default function NoteForm({ onCancel }: NoteFormProps) {
     mutation.mutate(values, {
       onSuccess: () => {
         formikHelpers.resetForm();
+        onCancel();
       },
     });
   };
@@ -97,7 +98,7 @@ export default function NoteForm({ onCancel }: NoteFormProps) {
         )}
 
         <div className={css.actions}>
-          <button type="button" className={css.cancelButton}>
+          <button type="button" className={css.cancelButton} onClick={onCancel}>
             Cancel
           </button>
           <button
